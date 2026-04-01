@@ -83,8 +83,9 @@ if st.button("Generate schedule"):
         pet = Pet(pet_name, species, age=0)
         for t in st.session_state.tasks:
             pet.add_task(Task(t["title"], t["duration_minutes"], t["priority"], t["category"]))
+        owner.add_pet(pet)
 
-        plan = Scheduler(owner, pet).generate_plan()
+        plan = Scheduler(owner).generate_plan()
 
         st.success(f"Plan generated for {pet.name}! Total time: {plan.total_duration} min / {int(available_minutes)} min available.")
 
