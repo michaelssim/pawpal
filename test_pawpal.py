@@ -103,6 +103,54 @@ def test_owner_get_all_tasks_across_pets():
     assert "Feeding" in titles
 
 
+# --- Task.score() ---
+
+def test_score_high_priority_no_due_date():
+    """High priority task with no due_date returns base score of 100."""
+    assert Task("Walk", 20, "high", "walk").score() == 100
+
+def test_score_medium_priority_no_due_date():
+    """Medium priority task with no due_date returns base score of 50."""
+    assert Task("Feeding", 10, "medium", "feeding").score() == 50
+
+def test_score_due_today_adds_urgency():
+    """A high-priority task due today scores 100 + 40 = 140."""
+    task = Task("Meds", 5, "high", "meds", due_date=date.today())
+    assert task.score() == 140
+
+def test_score_overdue_adds_max_urgency():
+    """An overdue task gets the maximum urgency bonus of +50."""
+    task = Task("Meds", 5, "high", "meds", due_date=date.today() - timedelta(days=1))
+    assert task.score() == 150
+
+def test_score_low_priority_due_tomorrow_outranks_medium_no_due_date():
+    """A low-priority task due tomorrow (10+30=40) scores less than medium (50) with no due date."""
+    low_due_tomorrow = Task("Enrichment", 20, "low", "enrichment", due_date=date.today() + timedelta(days=1))
+    medium_no_date   = Task("Feeding", 10, "medium", "feeding")
+    assert low_due_tomorrow.score() < medium_no_date.score()
+
+def test_overdue_low_priority_outranks_high_no_due_date():
+    """An overdue low-priority task (10+50=60) scores higher than a high-priority task with no due date (100).
+
+    Wait — 60 < 100, so it does NOT outrank. This confirms overdue low (60) < high no-date (100).
+    """
+    overdue_low = Task("Enrichment", 20, "low", "enrichment", due_date=date.today() - timedelta(days=2))
+    high_no_date = Task("Walk", 30, "high", "walk")
+    assert overdue_low.score() < high_no_date.score()
+
+def test_sort_tasks_urgency_promotes_overdue_medium_above_high_no_date():
+    """An overdue medium task (50+50=100) ties with a high task (100); duration breaks the tie."""
+    owner = Owner("Jordan", 60)
+    pet = Pet("Mochi", "dog", 3)
+    overdue_med = Task("Grooming", 30, "medium", "grooming", due_date=date.today() - timedelta(days=1))
+    high_no_date = Task("Walk",    30, "high",   "walk")
+    pet.add_task(high_no_date)
+    pet.add_task(overdue_med)
+    owner.add_pet(pet)
+    # Both score 100; same duration → original stable order preserved (Walk added first)
+    sorted_titles = [t.title for t in Scheduler(owner)._sort_tasks()]
+    assert sorted_titles.index("Walk") < sorted_titles.index("Grooming")
+
 # --- Scheduler ---
 
 def test_sort_tasks_full_order():

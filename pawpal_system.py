@@ -21,6 +21,32 @@ class Task:
         """Reset this task to incomplete so it can be scheduled again."""
         self.completed = False
 
+    def score(self):
+        """Return a numeric urgency score; higher scores are scheduled first.
+
+        Base score comes from priority (high=100, medium=50, low=10).
+        An urgency bonus is added when a due_date is set:
+          overdue → +50, due today → +40, tomorrow → +30,
+          2–3 days → +20, 4–7 days → +10, further out → +0.
+        """
+        base = {"high": 100, "medium": 50, "low": 10}.get(self.priority, 5)
+        if self.due_date is None:
+            return base
+        days_left = (self.due_date - date.today()).days
+        if days_left < 0:
+            urgency = 50
+        elif days_left == 0:
+            urgency = 40
+        elif days_left == 1:
+            urgency = 30
+        elif days_left <= 3:
+            urgency = 20
+        elif days_left <= 7:
+            urgency = 10
+        else:
+            urgency = 0
+        return base + urgency
+
     def is_high_priority(self):
         """Return True if this task's priority is 'high'."""
         return self.priority == "high"
@@ -162,11 +188,10 @@ class Scheduler:
                 task.reset()
 
     def _sort_tasks(self):
-        """Sort pending tasks by priority then by duration (shortest first within same priority)."""
-        priority_order = {"high": 0, "medium": 1, "low": 2}
+        """Sort pending tasks by weighted urgency score descending, then duration ascending as tiebreaker."""
         return sorted(
             self.get_all_pending_tasks(),
-            key=lambda t: (priority_order.get(t.priority, 3), t.duration_minutes)
+            key=lambda t: (-t.score(), t.duration_minutes)
         )
 
     def _fits_in_time(self, task, time_used):

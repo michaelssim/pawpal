@@ -1,6 +1,8 @@
 import streamlit as st
 from pawpal_system import Task, Pet, Owner, Scheduler
 
+PRIORITY_EMOJI = {"high": "🔴 High", "medium": "🟡 Medium", "low": "🟢 Low"}
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -90,7 +92,7 @@ if "owner" in st.session_state:
     if sorted_tasks:
         st.write("Current tasks (sorted by priority):")
         st.dataframe(
-            [{"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority, "completed": t.completed}
+            [{"title": t.title, "duration (min)": t.duration_minutes, "priority": PRIORITY_EMOJI.get(t.priority, t.priority), "completed": t.completed}
              for t in sorted_tasks],
             use_container_width=True,
         )
@@ -132,14 +134,14 @@ if generate_clicked:
         if plan.scheduled_tasks:
             st.markdown("### Scheduled")
             st.table([
-                {"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority}
+                {"title": t.title, "duration (min)": t.duration_minutes, "priority": PRIORITY_EMOJI.get(t.priority, t.priority)}
                 for t in plan.scheduled_tasks
             ])
 
         if plan.skipped_tasks:
             st.markdown("### Skipped (not enough time)")
             st.table([
-                {"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority}
+                {"title": t.title, "duration (min)": t.duration_minutes, "priority": PRIORITY_EMOJI.get(t.priority, t.priority)}
                 for t in plan.skipped_tasks
             ])
 

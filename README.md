@@ -24,11 +24,34 @@ Your final app should:
 
 ## 📸 Demo
 
-![PawPal+ app screenshot](screenshot.png)
+![PawPal+ app screenshot](screenshot_updated.png)
 
 ---
 
 ## Features
+
+### Challenge 1: Advanced Algorithmic Capability via Agent Mode
+Each task is assigned a numeric urgency score combining its priority level and how close its `due_date` is:
+
+| Priority | Base score |
+|---|---|
+| high | 100 |
+| medium | 50 |
+| low | 10 |
+
+| Days until due | Urgency bonus |
+|---|---|
+| Overdue | +50 |
+| Today | +40 |
+| Tomorrow | +30 |
+| 2–3 days | +20 |
+| 4–7 days | +10 |
+| Further / no date | +0 |
+
+This means a medium-priority task due today (score 90) is scheduled before a high-priority task with no due date (score 100) only when the scores cross — ensuring routine tasks never silently crowd out time-sensitive ones. Duration is used as a tiebreaker when scores are equal. Implemented in `Task.score()` and consumed by `Scheduler._sort_tasks()`.
+
+**How Claude Code's Agent Mode was used to implement this:**
+The feature was built in a single agentic session. Claude Code read `pawpal_system.py` to understand the existing `_sort_tasks` signature, proposed the scoring table and implemented `Task.score()` directly in the file, then updated `_sort_tasks` to use `-t.score()` as the primary sort key. It immediately ran the full test suite to confirm no existing tests broke, then wrote six new tests covering base scores, urgency bonuses, and edge cases (overdue, due today, low-priority task racing a high-priority one). No context switching or copy-pasting was needed — the read → edit → test → verify loop happened entirely within the same session.
 
 ### Priority-based scheduling
 Tasks are sorted high → medium → low priority before the daily plan is built. Within the same priority level, shorter tasks are scheduled first to maximise the number of tasks that fit in the available time budget. Any tasks that don't fit are collected in a "Skipped" list with a plain-language explanation.
