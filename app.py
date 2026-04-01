@@ -39,17 +39,34 @@ At minimum, your system should:
 
 st.divider()
 
-st.subheader("Quick Demo Inputs (UI only)")
-owner_name = st.text_input("Owner name", value="Jordan")
-available_minutes = st.number_input("Time available today (minutes)", min_value=10, max_value=480, value=60)
-pet_name = st.text_input("Pet name", value="Mochi")
-species = st.selectbox("Species", ["dog", "cat", "other"])
+# --- Section 1: Owner & Pet Setup ---
+st.subheader("Owner & Pet Setup")
 
+col1, col2 = st.columns(2)
+with col1:
+    owner_name = st.text_input("Owner name", value="Jordan")
+    available_minutes = st.number_input("Time available today (minutes)", min_value=10, max_value=480, value=60)
+with col2:
+    pet_name = st.text_input("Pet name", value="Mochi")
+    species = st.selectbox("Species", ["dog", "cat", "other"])
+
+if st.button("Save profile"):
+    owner = Owner(owner_name, int(available_minutes))
+    pet = Pet(pet_name, species, age=0)
+    owner.add_pet(pet)               # Owner.add_pet() links the pet to this owner
+    st.session_state.owner = owner   # store the whole owner (with pet inside) in the vault
+    st.success(f"Profile saved! Owner: {owner.name} | Pet: {pet.name} ({pet.species})")
+
+if "owner" in st.session_state:
+    st.caption("Current pets:")
+    for pet in st.session_state.owner.get_pets():   # Owner.get_pets() reads from the vault
+        st.markdown(f"- **{pet.name}** ({pet.species})")
+
+st.divider()
+
+# --- Section 2: Add Tasks ---
 st.markdown("### Tasks")
 st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
-
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -60,34 +77,51 @@ with col3:
     priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
 if st.button("Add task"):
-    st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority, "category": "general"}
-    )
+    if "owner" not in st.session_state:
+        st.warning("Save your profile first before adding tasks.")
+    else:
+        pet = st.session_state.owner.get_pets()[0]
+        pet.add_task(Task(task_title, int(duration), priority, "general"))  # Pet.add_task() wires directly to the object
+        st.success(f"Added '{task_title}' to {pet.name}'s task list.")
 
-if st.session_state.tasks:
-    st.write("Current tasks:")
-    st.table(st.session_state.tasks)
+if "owner" in st.session_state:
+    tasks = st.session_state.owner.get_pets()[0].get_tasks()  # Pet.get_tasks() reflects the live object state
+    if tasks:
+        st.write("Current tasks:")
+        st.table([
+            {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority, "completed": t.completed}
+            for t in tasks
+        ])
+    else:
+        st.info("No tasks yet. Add one above.")
 else:
     st.info("No tasks yet. Add one above.")
 
 st.divider()
 
+# --- Section 3: Build Schedule ---
 st.subheader("Build Schedule")
 st.caption("This button should call your scheduling logic once you implement it.")
 
-if st.button("Generate schedule"):
-    if not st.session_state.tasks:
+col_generate, col_reset = st.columns([3, 1])
+
+with col_generate:
+    generate_clicked = st.button("Generate schedule")
+with col_reset:
+    if st.button("Reset") and "owner" in st.session_state:
+        del st.session_state.owner
+        st.rerun()
+
+if generate_clicked:
+    if "owner" not in st.session_state:
+        st.warning("Save your profile first.")
+    elif not st.session_state.owner.get_pets()[0].get_tasks():
         st.warning("Add at least one task before generating a schedule.")
     else:
-        owner = Owner(owner_name, int(available_minutes))
-        pet = Pet(pet_name, species, age=0)
-        for t in st.session_state.tasks:
-            pet.add_task(Task(t["title"], t["duration_minutes"], t["priority"], t["category"]))
-        owner.add_pet(pet)
+        plan = Scheduler(st.session_state.owner).generate_plan()  # Scheduler reads directly from the vault
+        pet = st.session_state.owner.get_pets()[0]
 
-        plan = Scheduler(owner).generate_plan()
-
-        st.success(f"Plan generated for {pet.name}! Total time: {plan.total_duration} min / {int(available_minutes)} min available.")
+        st.success(f"Plan generated for {pet.name}! Total time: {plan.total_duration} min / {st.session_state.owner.get_available_minutes()} min available.")
 
         if plan.scheduled_tasks:
             st.markdown("### Scheduled")
