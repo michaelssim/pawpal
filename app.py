@@ -85,13 +85,19 @@ if st.button("Add task"):
         st.success(f"Added '{task_title}' to {pet.name}'s task list.")
 
 if "owner" in st.session_state:
-    tasks = st.session_state.owner.get_pets()[0].get_tasks()  # Pet.get_tasks() reflects the live object state
-    if tasks:
-        st.write("Current tasks:")
-        st.table([
-            {"title": t.title, "duration_minutes": t.duration_minutes, "priority": t.priority, "completed": t.completed}
-            for t in tasks
-        ])
+    scheduler = Scheduler(st.session_state.owner)
+    sorted_tasks = scheduler._sort_tasks()  # display tasks in scheduled priority order
+    if sorted_tasks:
+        st.write("Current tasks (sorted by priority):")
+        st.dataframe(
+            [{"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority, "completed": t.completed}
+             for t in sorted_tasks],
+            use_container_width=True,
+        )
+        conflicts = scheduler.detect_conflicts()
+        if conflicts:
+            for warning in conflicts:
+                st.warning(warning)
     else:
         st.info("No tasks yet. Add one above.")
 else:
@@ -125,13 +131,17 @@ if generate_clicked:
 
         if plan.scheduled_tasks:
             st.markdown("### Scheduled")
-            for task in plan.scheduled_tasks:
-                st.markdown(f"- **{task.title}** — {task.duration_minutes} min *({task.priority} priority)*")
+            st.table([
+                {"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority}
+                for t in plan.scheduled_tasks
+            ])
 
         if plan.skipped_tasks:
             st.markdown("### Skipped (not enough time)")
-            for task in plan.skipped_tasks:
-                st.markdown(f"- ~~{task.title}~~ — {task.duration_minutes} min *({task.priority} priority)*")
+            st.table([
+                {"title": t.title, "duration (min)": t.duration_minutes, "priority": t.priority}
+                for t in plan.skipped_tasks
+            ])
 
         with st.expander("Why was this plan chosen?"):
             st.text(plan.explain())

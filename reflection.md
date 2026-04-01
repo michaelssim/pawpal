@@ -24,6 +24,8 @@ classDiagram
         +str priority
         +str category
         +str frequency
+        +date due_date
+        +int start_time
         +bool completed
         +mark_complete()
         +reset()
@@ -58,6 +60,7 @@ classDiagram
         +generate_plan() DailyPlan
         +get_all_pending_tasks() list
         +mark_task_complete(title) bool
+        +detect_conflicts() list
         +reset_all_tasks()
         -_sort_tasks() list
         -_fits_in_time(task) bool
