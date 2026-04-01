@@ -1,10 +1,16 @@
+from datetime import date, timedelta
+
+
 class Task:
-    def __init__(self, title, duration_minutes, priority, category, frequency="daily"):
+    def __init__(self, title, duration_minutes, priority, category, frequency="daily", due_date=None, start_time=None):
+        """Create a Task with a title, duration, priority, category, frequency, optional due date, and optional start time."""
         self.title = title
         self.duration_minutes = duration_minutes
         self.priority = priority      # "low", "medium", "high"
         self.category = category      # e.g. "walk", "feeding", "meds", "grooming"
         self.frequency = frequency    # "daily", "weekly", "as-needed"
+        self.due_date = due_date      # date object or None
+        self.start_time = start_time  # minutes from midnight, e.g. 480 = 8:00am; None = unscheduled
         self.completed = False
 
     def mark_complete(self):
@@ -27,6 +33,7 @@ class Task:
 
 class Pet:
     def __init__(self, name, species, age):
+        """Create a Pet with a name, species, and age; starts with an empty task list."""
         self.name = name
         self.species = species
         self.age = age
@@ -51,6 +58,7 @@ class Pet:
 
 class Owner:
     def __init__(self, name, available_minutes, preferences=None):
+        """Create an Owner with a name, daily time budget, and optional preferences; starts with no pets."""
         self.name = name
         self.available_minutes = available_minutes
         self.preferences = preferences or []
@@ -78,6 +86,7 @@ class Owner:
 
 class Scheduler:
     def __init__(self, owner):
+        """Create a Scheduler bound to a specific Owner."""
         self.owner = owner
 
     def get_all_pending_tasks(self):
@@ -104,13 +113,47 @@ class Scheduler:
         return DailyPlan(scheduled, skipped, time_used)
 
     def mark_task_complete(self, title):
-        """Find a task by title across all pets and mark it complete; return True if found."""
+        """Mark a task complete; re-queue a fresh instance with the next due date if recurring."""
+        intervals = {"daily": timedelta(days=1), "weekly": timedelta(days=7)}
         for pet in self.owner.get_pets():
             for task in pet.get_tasks():
                 if task.title == title:
                     task.mark_complete()
+                    if task.frequency in intervals:
+                        next_due = date.today() + intervals[task.frequency]
+                        pet.add_task(Task(
+                            task.title,
+                            task.duration_minutes,
+                            task.priority,
+                            task.category,
+                            task.frequency,
+                            due_date=next_due,
+                        ))
                     return True
         return False
+
+    def detect_conflicts(self):
+        """Return a list of warning strings for any tasks whose time windows overlap; never raises."""
+        warnings = []
+        timed_tasks = [
+            (task, pet.name)
+            for pet in self.owner.get_pets()
+            for task in pet.get_pending_tasks()
+            if task.start_time is not None
+        ]
+        for i, (a, pet_a) in enumerate(timed_tasks):
+            for b, pet_b in timed_tasks[i + 1:]:
+                a_end = a.start_time + a.duration_minutes
+                b_end = b.start_time + b.duration_minutes
+                if a.start_time < b_end and b.start_time < a_end:
+                    overlap_start = max(a.start_time, b.start_time)
+                    overlap_end = min(a_end, b_end)
+                    warnings.append(
+                        f"WARNING: '{a.title}' ({pet_a}) and '{b.title}' ({pet_b}) "
+                        f"overlap by {overlap_end - overlap_start} min "
+                        f"(both active around minute {overlap_start})"
+                    )
+        return warnings
 
     def reset_all_tasks(self):
         """Reset every task across all pets back to incomplete."""
@@ -133,6 +176,7 @@ class Scheduler:
 
 class DailyPlan:
     def __init__(self, scheduled_tasks, skipped_tasks, total_duration):
+        """Store the scheduled tasks, skipped tasks, and total time used for a day's plan."""
         self.scheduled_tasks = scheduled_tasks
         self.skipped_tasks = skipped_tasks
         self.total_duration = total_duration
