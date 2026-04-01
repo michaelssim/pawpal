@@ -1,4 +1,5 @@
 import streamlit as st
+from pawpal_system import Task, Pet, Owner, Scheduler
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -40,6 +41,7 @@ st.divider()
 
 st.subheader("Quick Demo Inputs (UI only)")
 owner_name = st.text_input("Owner name", value="Jordan")
+available_minutes = st.number_input("Time available today (minutes)", min_value=10, max_value=480, value=60)
 pet_name = st.text_input("Pet name", value="Mochi")
 species = st.selectbox("Species", ["dog", "cat", "other"])
 
@@ -59,7 +61,7 @@ with col3:
 
 if st.button("Add task"):
     st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority}
+        {"title": task_title, "duration_minutes": int(duration), "priority": priority, "category": "general"}
     )
 
 if st.session_state.tasks:
@@ -74,9 +76,31 @@ st.subheader("Build Schedule")
 st.caption("This button should call your scheduling logic once you implement it.")
 
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
+    if not st.session_state.tasks:
+        st.warning("Add at least one task before generating a schedule.")
+    else:
+        owner = Owner(owner_name, int(available_minutes))
+        pet = Pet(pet_name, species, age=0)
+        for t in st.session_state.tasks:
+            pet.add_task(Task(t["title"], t["duration_minutes"], t["priority"], t["category"]))
+
+        plan = Scheduler(owner, pet).generate_plan()
+
+        st.success(f"Plan generated for {pet.name}! Total time: {plan.total_duration} min / {int(available_minutes)} min available.")
+
+        if plan.scheduled_tasks:
+            st.markdown("### Scheduled")
+            for task in plan.scheduled_tasks:
+                st.markdown(f"- **{task.title}** — {task.duration_minutes} min *({task.priority} priority)*")
+
+        if plan.skipped_tasks:
+            st.markdown("### Skipped (not enough time)")
+            for task in plan.skipped_tasks:
+                st.markdown(f"- ~~{task.title}~~ — {task.duration_minutes} min *({task.priority} priority)*")
+
+        with st.expander("Why was this plan chosen?"):
+            st.text(plan.explain())
+
     st.markdown(
         """
 Suggested approach:
