@@ -74,6 +74,24 @@ def test_scheduler_respects_available_time():
     plan = Scheduler(owner, pet).generate_plan()
     assert plan.total_duration <= 30
 
+def test_scheduler_shorter_task_scheduled_before_longer_same_priority():
+    # Two high-priority tasks: short one should come first so more tasks fit
+    owner = Owner("Jordan", 60)
+    pet = Pet("Mochi", "dog", 3)
+    pet.add_task(Task("Long walk", 55, "high", "walk"))
+    pet.add_task(Task("Give meds", 5, "high", "meds"))
+
+    plan = Scheduler(owner, pet).generate_plan()
+    assert plan.scheduled_tasks[0].title == "Give meds"
+
+def test_scheduler_invalid_priority_does_not_crash():
+    owner = Owner("Jordan", 60)
+    pet = Pet("Mochi", "dog", 3)
+    pet.add_task(Task("Mystery task", 10, "urgent", "other"))  # invalid priority
+
+    plan = Scheduler(owner, pet).generate_plan()
+    assert len(plan.scheduled_tasks) == 1  # still scheduled, treated as lowest priority
+
 def test_scheduler_no_tasks_produces_empty_plan():
     owner = Owner("Jordan", 60)
     pet = Pet("Mochi", "dog", 3)
