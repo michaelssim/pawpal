@@ -23,6 +23,10 @@ classDiagram
         +int duration_minutes
         +str priority
         +str category
+        +str frequency
+        +bool completed
+        +mark_complete()
+        +reset()
         +is_high_priority() bool
         +__repr__() str
     }
@@ -33,20 +37,28 @@ classDiagram
         +int age
         +list tasks
         +add_task(task)
+        +remove_task(title)
         +get_tasks() list
+        +get_pending_tasks() list
     }
 
     class Owner {
         +str name
         +int available_minutes
         +list preferences
+        +list pets
+        +add_pet(pet)
+        +get_pets() list
+        +get_all_tasks() list
         +get_available_minutes() int
     }
 
     class Scheduler {
         +Owner owner
-        +Pet pet
         +generate_plan() DailyPlan
+        +get_all_pending_tasks() list
+        +mark_task_complete(title) bool
+        +reset_all_tasks()
         -_sort_tasks() list
         -_fits_in_time(task) bool
     }
@@ -59,10 +71,9 @@ classDiagram
         +explain() str
     }
 
-    Owner "1" --> "1" Pet : has
+    Owner "1" *-- "*" Pet : owns
     Pet "1" *-- "*" Task : contains
     Scheduler --> Owner : uses
-    Scheduler --> Pet : uses
     Scheduler ..> DailyPlan : generates
 ```
 
