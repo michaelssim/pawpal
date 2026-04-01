@@ -22,6 +22,40 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## 📸 Demo
+
+![PawPal+ app screenshot](screenshot.png)
+
+---
+
+## Features
+
+### Priority-based scheduling
+Tasks are sorted high → medium → low priority before the daily plan is built. Within the same priority level, shorter tasks are scheduled first to maximise the number of tasks that fit in the available time budget. Any tasks that don't fit are collected in a "Skipped" list with a plain-language explanation.
+
+### Time budget enforcement
+Each owner sets a daily time budget (in minutes). The scheduler tracks cumulative time and stops adding tasks the moment the next one would exceed the limit — the total scheduled duration is guaranteed never to exceed `available_minutes`.
+
+### Sorting by priority and duration
+`Scheduler._sort_tasks()` applies a two-key sort: `(priority_order, duration_minutes)`. This means two high-priority tasks are always ordered shortest-first, giving the schedule the best chance of fitting the most important work into the day.
+
+### Conflict warnings
+`Scheduler.detect_conflicts()` checks all tasks that have an explicit `start_time` for overlapping time windows using interval overlap logic (`a.start_time < b_end and b.start_time < a_end`). Conflicts across different pets are detected too. Warnings are returned as plain strings — the method never raises — and are surfaced in the UI via `st.warning`.
+
+### Daily and weekly recurrence
+When a recurring task (`frequency="daily"` or `"weekly"`) is marked complete, a fresh pending instance is automatically re-queued on the pet with its `due_date` calculated using Python's `timedelta` (`today + 1 day` or `today + 7 days`). One-off tasks (`frequency="as-needed"`) are not re-queued.
+
+### Multi-pet support
+An `Owner` manages a list of pets. The scheduler aggregates pending tasks across all pets into a single sorted pool before generating the plan, so a household with multiple animals gets one unified daily schedule.
+
+### Task lifecycle management
+Each task tracks a `completed` flag. `get_pending_tasks()` filters completed tasks out automatically, so they never re-appear in a generated plan. `reset_all_tasks()` clears all flags at once to start a fresh day.
+
+### Explainable plans
+`DailyPlan.explain()` returns a human-readable reason for every scheduling decision — why each task was included and why each task was skipped — displayed in the UI as an expandable section.
+
+---
+
 ## Getting started
 
 ### Setup
